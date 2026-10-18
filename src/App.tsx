@@ -53,18 +53,46 @@ function useQuizRealtime(role) {
   useEffect(() => {
     const token = localStorage.getItem('timothy_token');
     if (!token) return undefined;
-    const socket = io({ path: '/socket.io', auth: { token }, transports: ['websocket', 'polling'] });
+
+    const apiUrl =
+      import.meta.env.VITE_API_URL ||
+      'https://biblequizserver.onrender.com';
+
+    const socket = io(apiUrl, {
+      path: '/socket.io',
+      auth: { token },
+      transports: ['websocket', 'polling'],
+    });
+
     socket.on('quiz_state', (state) => {
       queryClient.setQueryData(getGetCurrentQuizQueryKey(), state);
-      queryClient.invalidateQueries({ queryKey: getListTeamsQueryKey() });
+      queryClient.invalidateQueries({
+        queryKey: getListTeamsQueryKey(),
+      });
     });
+
     socket.on('team_status_changed', () => {
-      queryClient.invalidateQueries({ queryKey: getListTeamsQueryKey() });
+      queryClient.invalidateQueries({
+        queryKey: getListTeamsQueryKey(),
+      });
     });
+
     socket.on('connect', () => {
-      queryClient.invalidateQueries({ queryKey: getGetCurrentQuizQueryKey() });
-      if (role === 'admin') queryClient.invalidateQueries({ queryKey: getListTeamsQueryKey() });
+      queryClient.invalidateQueries({
+        queryKey: getGetCurrentQuizQueryKey(),
+      });
+
+      if (role === 'admin') {
+        queryClient.invalidateQueries({
+          queryKey: getListTeamsQueryKey(),
+        });
+      }
     });
+
+    socket.on('connect_error', (error) => {
+      console.error('Quiz socket connection failed:', error.message);
+    });
+
     return () => socket.disconnect();
   }, [role]);
 }
